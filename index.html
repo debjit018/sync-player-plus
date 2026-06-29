@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SyncPlayer+</title>
+  <style>
+    :root {
+      --bg-dark: #111;
+      --bg-darker: #0a0a0a;
+      --bg-controls: #222;
+      --bg-chat: #1c1c1c;
+      --bg-input: #333;
+      --bg-button: #444;
+      --accent-color: #4285f4;
+      --text-primary: #ffffff;
+      --text-secondary: #aaaaaa;
+      --success-color: #4caf50;
+      --error-color: #f44336;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Compact status bar */
+    #statusBar {
+      padding: 4px 8px;
+      background: var(--bg-darker);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Room input section */
+    #roomInput {
+      padding: 12px;
+      background: var(--bg-controls);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .room-input-header h2 {
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+      color: var(--accent-color);
+    }
+
+    .room-input-header p {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .room-input-group {
+      display: flex;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #roomIdInput {
+      flex-grow: 1;
+      padding: 8px;
+      font-size: 0.9rem;
+    }
+
+    /* Main content area - now with fixed heights */
+    #playerContainer {
+      height: 55vh; /* 55% of viewport height */
+      background: black;
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Compact controls */
+    #controls {
+      padding: 8px;
+      background: var(--bg-controls);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #filePicker {
+      width: 0.1px;
+      height: 0.1px;
+      opacity: 0;
+      position: absolute;
+    }
+
+    #filePicker + label {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    #connectBtn {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    /* Compact chat area */
+    #chatContainer {
+      height: 25vh; /* 25% of viewport height */
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-chat);
+    }
+
+    #chatLog {
+      flex-grow: 1;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      padding: 6px;
+    }
+
+    #chatInputArea {
+      padding: 6px;
+      display: flex;
+    }
+
+    #chatInput {
+      padding: 6px;
+      font-size: 0.85rem;
+    }
+
+    #sendBtn {
+      padding: 0 12px;
+      margin-left: 6px;
+      font-size: 0.85rem;
+    }
+
+    /* Responsive adjustments */
+    @media (max-height: 800px) {
+      #playerContainer {
+        height: 50vh;
+      }
+      #chatContainer {
+        height: 30vh;
+      }
+    }
+
+    @media (max-width: 768px) {
+      #controls {
+        flex-wrap: wrap;
+      }
+      #filePicker + label,
+      #connectBtn {
+        flex-grow: 1;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="statusBar">
+    <span id="connectionStatus">Disconnected</span>
+    <span id="fileStatus">No file selected</span>
+  </div>
+
+  <div id="roomInput">
+    <div class="room-input-header">
+      <h2>Connect to a Room</h2>
+      <p>Enter the same Room ID as your friend to start syncing</p>
+    </div>
+    <div class="room-input-group">
+      <input 
+        type="text" 
+        id="roomIdInput" 
+        placeholder="Enter Room ID" 
+        aria-label="Room ID"
+        maxlength="20"
+      >
+      <button id="confirmRoomBtn">Connect</button>
+    </div>
+  </div>
+
+  <div id="playerContainer">
+    <video id="player" controls playsinline></video>
+  </div>
+  
+  <div id="controls">
+    <input type="file" id="filePicker" accept="video/*" />
+    <label for="filePicker">Choose Video</label>
+    <button id="connectBtn">Connect to Friend</button>
+  </div>
+
+  <div id="chatContainer">
+    <div id="chatLog"></div>
+    <div id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

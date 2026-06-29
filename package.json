@@ -1,0 +1,55 @@
+{
+  "name": "syncplayer-plus",
+  "version": "1.0.0",
+  "description": "A WebRTC-based application for synchronized video playback and chat",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "keywords": [
+    "webrtc",
+    "video",
+    "sync",
+    "p2p",
+    "chat"
+  ],
+  "author": "debjit018",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/debjit018/SyncPlayer-plus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/debjit018/syncplayer-plus/issues"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^24.13.3",
+    "electron-updater": "^6.6.2",
+    "eslint": "^8.56.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "build": {
+    "appId": "com.example.syncplayerplus",
+    "productName": "SyncPlayer+",
+    "copyright": "Copyright © 2025 ${author}",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Network"
+    }
+  }
+}
