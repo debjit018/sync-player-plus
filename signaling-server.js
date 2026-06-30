@@ -1,12 +1,18 @@
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 3000 });
+const http = require('http');
 
-const rooms = new Map(); // Using Map for better performance with frequent additions/deletions
+// HTTP server for health checks (required by Railway/Render)
+const server = http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('OK');
+});
+
+const wss = new WebSocket.Server({ server });
+const rooms = new Map(); // roomId -> Set of WebSocket clients
 
 wss.on('connection', (ws) => {
   let userRoom = null;
 
-  // Send error message helper
   const sendError = (message) => {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'error', message }));
@@ -28,23 +34,40 @@ wss.on('connection', (ws) => {
         return;
       }
 
-      // Leave previous room if joining new one
+      // Leave previous room if joining a new one
       if (userRoom && rooms.has(userRoom)) {
-        rooms.set(userRoom, rooms.get(userRoom).filter(client => client !== ws));
-        if (rooms.get(userRoom).length === 0) rooms.delete(userRoom);
+        rooms.get(userRoom).delete(ws);
+        if (rooms.get(userRoom).size === 0) rooms.delete(userRoom);
       }
 
       // Join new room
       userRoom = data.room;
       if (!rooms.has(userRoom)) rooms.set(userRoom, new Set());
       rooms.get(userRoom).add(ws);
-      
-      console.log(`Client joined room: ${userRoom}`);
-      ws.send(JSON.stringify({ type: 'joined', room: userRoom }));
+
+      const roomSize = rooms.get(userRoom).size;
+      console.log(`Client joined room: ${userRoom} (${roomSize}/2)`);
+
+      if (roomSize === 1) {
+        // First client becomes the initiator
+        ws.send(JSON.stringify({ type: 'joined', role: 'initiator' }));
+      } else if (roomSize === 2) {
+        // Second client is the receiver
+        ws.send(JSON.stringify({ type: 'joined', role: 'receiver' }));
+        // Tell the first client their peer has arrived, so they create the offer
+        rooms.get(userRoom).forEach(client => {
+          if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: 'peer_joined' }));
+          }
+        });
+      } else {
+        sendError('Room is full (max 2 peers)');
+        rooms.get(userRoom).delete(ws);
+      }
       return;
     }
 
-    // Broadcast to room
+    // Broadcast signaling messages (offer/answer/ice) to the other peer in the room
     if (userRoom && rooms.has(userRoom)) {
       const roomClients = rooms.get(userRoom);
       roomClients.forEach(client => {
@@ -70,4 +93,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-console.log("Signaling server started on ws://localhost:3000");
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Signaling server started on port ${PORT}`);
+});
