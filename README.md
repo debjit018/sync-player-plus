@@ -27,7 +27,7 @@ A WebRTC-based desktop application for synchronized video playback and real-time
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/debjit018/SyncPlayer-plus.git
+git clone https://github.com/debjit018/sync-player-plus.git
 cd SyncPlayer-plus
 ```
 
