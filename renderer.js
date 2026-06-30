@@ -15,7 +15,7 @@ const elements = {
   roomInput: document.getElementById('roomInput'),
   playerContainer: document.getElementById('playerContainer'),
   controls: document.getElementById('controls'),
-  statusBar: document.getElementById('statusBar') // Added this line to fix the status bar error
+  statusBar: document.getElementById('statusBar')
 };
 
 // Application State
@@ -32,6 +32,8 @@ const state = {
 
 // Configuration
 const CONFIG = {
+  // Your live Railway signaling server. Use wss:// (secure) for remote connections.
+  SIGNALING_URL: 'wss://sync-player-plus-production.up.railway.app',
   ICE_SERVERS: [{ urls: 'stun:stun.l.google.com:19302' }],
   SYNC_INTERVAL: 3000,
   SYNC_THRESHOLD: 0.5,
@@ -131,7 +133,7 @@ async function handlePeerConnection() {
   }
 
   try {
-    state.signalingSocket = new WebSocket('ws://localhost:3000');
+    state.signalingSocket = new WebSocket(CONFIG.SIGNALING_URL);
     updateStatus("Connecting to signaling server...");
     elements.connectBtn.disabled = true;
 
@@ -140,19 +142,18 @@ async function handlePeerConnection() {
         type: 'join', 
         room: state.roomId 
       }));
-      state.isInitiator = true;
-      setupWebRTC();
-      updateStatus(`Connected to room: ${state.roomId}`);
-      elements.connectionStatus.textContent = "Connected";
-      elements.connectBtn.textContent = "Connected";
+      // Don't assume initiator here — server assigns the role in 'joined' message
+      updateStatus(`Joined room: ${state.roomId} — waiting for peer...`);
+      elements.connectionStatus.textContent = "Waiting...";
+      elements.connectBtn.textContent = "Waiting for friend...";
       elements.connectBtn.classList.add('connected');
       state.isConnected = true;
     };
 
     state.signalingSocket.onmessage = (e) => {
-  console.log("Raw WebSocket message:", e.data);
-  handleSignalingMessage(e);
-};
+      console.log("Raw WebSocket message:", e.data);
+      handleSignalingMessage(e);
+    };
     state.signalingSocket.onerror = (e) => {
       showError("Connection error");
       cleanupConnection();
@@ -208,6 +209,8 @@ function setupDataChannel() {
 
   state.dataChannel.onopen = () => {
     updateStatus("Data channel ready");
+    elements.connectionStatus.textContent = "Connected";
+    elements.connectBtn.textContent = "Connected";
     if (state.isInitiator) {
       startSyncInterval();
     }
@@ -234,9 +237,32 @@ async function handleSignalingMessage(event) {
     
     console.log("Received signaling message:", msg);
 
-    if (msg.offer) {
-      state.isInitiator = false;
+    if (msg.type === 'joined') {
+      // Server tells us whether we're the initiator or receiver
+      state.isInitiator = msg.role === 'initiator';
+      console.log(`Assigned role: ${msg.role}`);
+
+      if (!state.isInitiator) {
+        // Receiver sets up the peer connection now, ready to accept an offer
+        await setupWebRTC();
+      }
+      return;
+    }
+
+    if (msg.type === 'peer_joined') {
+      // We are the initiator and our peer just joined — start the offer
+      updateStatus("Peer found! Connecting...");
       await setupWebRTC();
+      return;
+    }
+
+    if (msg.type === 'error') {
+      showError(msg.message);
+      return;
+    }
+
+    if (msg.offer) {
+      if (!state.peerConnection) await setupWebRTC();
       await state.peerConnection.setRemoteDescription(new RTCSessionDescription(msg.offer));
       const answer = await state.peerConnection.createAnswer();
       await state.peerConnection.setLocalDescription(answer);
