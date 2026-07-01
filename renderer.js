@@ -34,7 +34,26 @@ const state = {
 const CONFIG = {
   // Your live Railway signaling server. Use wss:// (secure) for remote connections.
   SIGNALING_URL: 'wss://sync-player-plus-production.up.railway.app',
-  ICE_SERVERS: [{ urls: 'stun:stun.l.google.com:19302' }],
+  ICE_SERVERS: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ],
   SYNC_INTERVAL: 3000,
   SYNC_THRESHOLD: 0.5,
   DRIFT_THRESHOLD: 0.4,
@@ -175,6 +194,24 @@ async function setupWebRTC() {
     state.peerConnection = new RTCPeerConnection({
       iceServers: CONFIG.ICE_SERVERS
     });
+
+    // Log connection state changes — helps diagnose NAT/ICE issues
+    state.peerConnection.onconnectionstatechange = () => {
+      const s = state.peerConnection.connectionState;
+      console.log('Connection state:', s);
+      updateStatus('Connection: ' + s);
+      if (s === 'connected') {
+        elements.connectionStatus.textContent = "Connected";
+        elements.connectBtn.textContent = "Connected";
+      } else if (s === 'failed' || s === 'disconnected') {
+        showError('Connection ' + s + '. Try reconnecting.');
+      }
+    };
+
+    // Log ICE state changes — useful for spotting NAT traversal failures
+    state.peerConnection.oniceconnectionstatechange = () => {
+      console.log('ICE state:', state.peerConnection.iceConnectionState);
+    };
 
     state.peerConnection.onicecandidate = (e) => {
       if (e.candidate && state.signalingSocket?.readyState === WebSocket.OPEN) {
